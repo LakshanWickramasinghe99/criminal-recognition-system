@@ -17,88 +17,120 @@ export default function AuditLog() {
   }, []);
 
   if (loading) return (
-    <p style={s.loading}>LOADING BLOCKCHAIN DATA...</p>
+    <p style={s.loading}>LOADING AUDIT DATA...</p>
   );
 
-  const highConf   = logs.filter(l => l.confidence >= 0.7).length;
-  const avgConf    = logs.length
-    ? (logs.reduce((a, l) => a + l.confidence, 0) / logs.length * 100).toFixed(1)
-    : '0.0';
-
   return (
-    <div style={s.pg}>
+    <div style={s.page}>
 
-      {/* ── Page header ── */}
-      <div style={s.pageHeader}>
-        <div style={s.phLeft}>
-          <div style={s.phIcon}>⬡</div>
-          <div>
-            <div style={s.phTitle}>Blockchain Audit Log</div>
-            <div style={s.phSub}>IMMUTABLE IDENTIFICATION EVENT LEDGER</div>
+      {/* Header */}
+      <div style={s.header}>
+        <div style={s.shield}>⚖</div>
+        <div>
+          <div style={s.headerTitle}>
+            Blockchain Audit Trail
+          </div>
+          <div style={s.headerSub}>
+            Immutable identification event log —
+            tamper-proof legal record
           </div>
         </div>
-        <div style={s.phRight}>
-          <span style={s.blockBadge}>BLOCK #????</span>
-          <span style={s.recBadge}>{logs.length} EVENTS</span>
+      </div>
+
+      {/* Info Banner */}
+      <div style={s.infoBanner}>
+        🔗 All identification events are permanently recorded
+        on the Ethereum blockchain and cannot be modified,
+        deleted, or disputed. Each event is independently
+        verifiable by transaction hash.
+      </div>
+
+      {/* Stats */}
+      <div style={s.statsRow}>
+        <div style={s.statBox}>
+          <div style={s.statVal}>{logs.length}</div>
+          <div style={s.statLabel}>
+            TOTAL IDENTIFICATION EVENTS
+          </div>
+        </div>
+        <div style={s.statBox}>
+          <div style={{ ...s.statVal, color: '#22c55e' }}>
+            VERIFIED
+          </div>
+          <div style={s.statLabel}>BLOCKCHAIN STATUS</div>
+        </div>
+        <div style={s.statBox}>
+          <div style={{ ...s.statVal, color: '#7a5af8' }}>
+            ETHEREUM
+          </div>
+          <div style={s.statLabel}>NETWORK</div>
         </div>
       </div>
 
-      {/* ── Info strip ── */}
-      <div style={s.infoStrip}>
-        <span style={s.infoIc}>⬡</span>
-        <span style={s.infoTxt}>
-          All identification events are permanently recorded on the
-          Ethereum blockchain — tamper-proof and immutable. Once
-          recorded, data cannot be modified or deleted, making it
-          legally admissible evidence for court proceedings.
-        </span>
-      </div>
+      {/* Logs Table */}
+      <div style={s.card}>
+        <div style={s.cardTitle}>
+          IDENTIFICATION EVENT LOG
+        </div>
 
-      {/* ── Section header ── */}
-      <div style={s.sectionHd}>
-        <div style={s.secTitle}>Identification Events</div>
-      </div>
-
-      {/* ── Table ── */}
-      <div style={s.tableWrap}>
         {logs.length === 0 ? (
-          <p style={s.empty}>NO EVENTS RECORDED</p>
+          <div style={s.empty}>
+            <div style={{ fontSize: '32px' }}>📭</div>
+            <div style={s.emptyText}>
+              NO IDENTIFICATION EVENTS RECORDED YET
+            </div>
+            <div style={s.emptySub}>
+              Events will appear here after criminal
+              identifications are confirmed
+            </div>
+          </div>
         ) : (
           <table style={s.table}>
             <thead>
               <tr style={s.thead}>
-                {['#','Criminal ID','Video File','Confidence',
-                  'Frames','Timestamp','Block Time']
-                  .map(h => <th key={h} style={s.th}>{h}</th>)}
+                {['#','Criminal ID','Video File',
+                  'Confidence','Frames','Detection Time',
+                  'Block Timestamp']
+                  .map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
               </tr>
             </thead>
             <tbody>
               {logs.map((log, i) => (
                 <tr key={i} style={s.tr}>
-                  <td style={{ ...s.td, ...s.numTd }}>
-                    {String(i + 1).padStart(2, '0')}
+                  <td style={{ ...s.td, ...s.numCell }}>
+                    {i + 1}
                   </td>
                   <td style={s.td}>
-                    <span style={s.idTag}>{log.criminal_id}</span>
+                    <span style={s.idTag}>
+                      {log.criminal_id}
+                    </span>
                   </td>
-                  <td style={{ ...s.td, ...s.fileTd }}>
-                    {log.video_file}
+                  <td style={{ ...s.td, ...s.fileCell }}>
+                    📹 {log.video_file}
                   </td>
                   <td style={s.td}>
-                    <span style={log.confidence >= 0.7
-                      ? s.confHigh : s.confMid}>
+                    <span style={{
+                      ...s.confBadge,
+                      color: log.confidence >= 0.7
+                        ? '#22c55e' : '#f59e0b',
+                      borderColor: log.confidence >= 0.7
+                        ? '#22c55e' : '#f59e0b',
+                    }}>
                       {(log.confidence * 100).toFixed(1)}%
                     </span>
                   </td>
-                  <td style={{ ...s.td, ...s.framesTd }}>
-                    {log.frame_count?.toLocaleString()}
+                  <td style={{ ...s.td, ...s.numCell }}>
+                    {log.frame_count}
                   </td>
-                  <td style={{ ...s.td, ...s.tsTd }}>
+                  <td style={{ ...s.td, ...s.timeCell }}>
                     {log.timestamp?.toFixed(1)}s
                   </td>
-                  <td style={{ ...s.td, ...s.dateTd }}>
+                  <td style={{ ...s.td, ...s.timeCell }}>
                     {new Date(log.detected_at * 1000)
-                      .toLocaleString('en-GB', { hour12: false })}
+                      .toLocaleString('en-GB',
+                        { hour12: false })}
                   </td>
                 </tr>
               ))}
@@ -107,159 +139,116 @@ export default function AuditLog() {
         )}
       </div>
 
-      {/* ── Bottom grid ── */}
-      <div style={s.bottomGrid}>
-        <div style={s.infoCard}>
-          <div style={s.icTitle}>⬡ Blockchain Security</div>
-          <div style={s.icBody}>
-            Each event is stored as an immutable transaction on the
-            Ethereum blockchain. Records include criminal ID, video
-            source, confidence score, frame count, and exact timestamp.
-            Hashed via SHA-256 and linked through a Merkle tree —
-            any tampering is immediately detectable.
-          </div>
+      {/* Legal Notice */}
+      <div style={s.legalBox}>
+        <div style={s.legalTitle}>
+          ⚖️ LEGAL ADMISSIBILITY NOTICE
         </div>
-        <div style={s.statsMini}>
-          <div style={s.smTitle}>Session Summary</div>
-          {[
-            { label:'Total Events',          val: String(logs.length).padStart(3,'0'), color:'#4a8adc' },
-            { label:'High Confidence (>70%)', val: String(highConf).padStart(3,'0'),  color:'#22c55e' },
-            { label:'Avg Confidence',         val: `${avgConf}%`,                      color:'#d97706' },
-            { label:'Chain Status',           val: 'VERIFIED',                          color:'#22c55e' },
-          ].map((r, i, arr) => (
-            <div key={r.label} style={{
-              ...s.smRow,
-              borderBottom: i < arr.length - 1 ? '1px solid #0f1e35' : 'none',
-            }}>
-              <span style={s.smLbl}>{r.label}</span>
-              <span style={{ ...s.smVal, color: r.color }}>{r.val}</span>
-            </div>
-          ))}
+        <div style={s.legalText}>
+          All identification records stored in this system
+          are backed by Ethereum blockchain transactions,
+          providing cryptographic proof of the time, content,
+          and integrity of each record. These records are
+          tamper-evident and suitable for use as digital
+          evidence in legal proceedings under Sri Lanka's
+          Electronic Transactions Act.
         </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div style={s.footer}>
-        <span style={s.footerTxt}>
-          IMMUTABLE LEDGER — TAMPER EVIDENT — ETHEREUM MAINNET
-        </span>
-        <span style={s.enc}>SHA-256 MERKLE TREE</span>
       </div>
     </div>
   );
 }
 
-/* ─── Styles ─────────────────────────────────────────────── */
 const s = {
-  pg:         { background:'#0a0e1a', color:'#c8d8f0',
-                fontFamily:"'Courier New', monospace" },
-  loading:    { color:'#2a6fc4', textAlign:'center',
-                marginTop:'4rem', letterSpacing:'3px', fontSize:'12px' },
-
-  pageHeader: { display:'flex', alignItems:'center',
-                justifyContent:'space-between',
-                borderBottom:'1px solid #1a3a5c',
-                paddingBottom:'14px', marginBottom:'18px' },
-  phLeft:     { display:'flex', alignItems:'center', gap:'10px' },
-  phIcon:     { width:'34px', height:'34px', background:'#130a2a',
-                border:'2px solid #2a1a5c', borderRadius:'3px',
-                display:'flex', alignItems:'center',
-                justifyContent:'center', fontSize:'16px' },
-  phTitle:    { fontSize:'12px', fontWeight:'700', color:'#e0ecff',
-                letterSpacing:'2px', textTransform:'uppercase' },
-  phSub:      { fontSize:'9px', color:'#2a5a8a',
-                letterSpacing:'2px', marginTop:'2px' },
-  phRight:    { display:'flex', alignItems:'center', gap:'8px' },
-  blockBadge: { background:'#130a2a', border:'1px solid #2a1a5c',
-                color:'#7a5af8', fontSize:'9px', padding:'3px 10px',
-                borderRadius:'2px', letterSpacing:'2px',
-                fontFamily:"'Courier New', monospace" },
-  recBadge:   { background:'#0d2040', border:'1px solid #1a3a5c',
-                color:'#4a8adc', fontSize:'9px', padding:'2px 8px',
-                borderRadius:'2px', letterSpacing:'1px' },
-
-  infoStrip:  { background:'#0d0a1a', border:'1px solid #1a1040',
-                borderLeft:'3px solid #7a5af8',
-                padding:'10px 14px', marginBottom:'16px',
-                display:'flex', alignItems:'flex-start', gap:'10px' },
-  infoIc:     { color:'#7a5af8', fontSize:'12px',
-                flexShrink:0, paddingTop:'1px' },
-  infoTxt:    { fontSize:'9px', color:'#4a3a7a',
-                letterSpacing:'1px', lineHeight:'1.7' },
-
-  sectionHd:  { display:'flex', alignItems:'center',
-                justifyContent:'space-between', marginBottom:'12px' },
-  secTitle:   { fontSize:'10px', fontWeight:'700', color:'#4a8adc',
-                letterSpacing:'3px', textTransform:'uppercase',
-                borderLeft:'3px solid #2a6fc4', paddingLeft:'8px' },
-
-  tableWrap:  { background:'#0d1526', border:'1px solid #1a3a5c',
-                overflowX:'auto', marginBottom:'14px' },
-  table:      { width:'100%', borderCollapse:'collapse',
-                fontSize:'11px', minWidth:'700px' },
-  thead:      { background:'#070d1a', borderBottom:'2px solid #1a3a5c' },
-  th:         { padding:'9px 12px', textAlign:'left', color:'#2a5a8a',
-                fontSize:'9px', letterSpacing:'2px',
-                textTransform:'uppercase', fontWeight:'700' },
-  tr:         { borderBottom:'1px solid #0f1e35' },
-  td:         { padding:'10px 12px', color:'#a0c0e8', verticalAlign:'middle' },
-
-  numTd:      { color:'#2a4a6a', fontFamily:"'Courier New', monospace",
-                fontSize:'10px' },
-  idTag:      { background:'#0a1a30', border:'1px solid #1a3a5c',
-                color:'#3a8adc', fontSize:'10px', padding:'2px 7px',
-                borderRadius:'2px', fontFamily:"'Courier New', monospace",
-                letterSpacing:'1px', whiteSpace:'nowrap' },
-  fileTd:     { color:'#4a7aaa', fontSize:'10px',
-                fontFamily:"'Courier New', monospace" },
-  confHigh:   { background:'#0a1a10', border:'1px solid #1a4a1a',
-                color:'#22c55e', fontSize:'10px', fontWeight:'700',
-                padding:'2px 8px', borderRadius:'2px',
-                fontFamily:"'Courier New', monospace" },
-  confMid:    { background:'#1a1000', border:'1px solid #3a2a00',
-                color:'#d97706', fontSize:'10px', fontWeight:'700',
-                padding:'2px 8px', borderRadius:'2px',
-                fontFamily:"'Courier New', monospace" },
-  framesTd:   { color:'#6a9abf', fontFamily:"'Courier New', monospace",
-                fontSize:'10px' },
-  tsTd:       { color:'#4a7aaa', fontFamily:"'Courier New', monospace",
-                fontSize:'10px' },
-  dateTd:     { fontFamily:"'Courier New', monospace",
-                fontSize:'10px', color:'#2a5a7a', whiteSpace:'nowrap' },
-
-  empty:      { color:'#1a4a6a', textAlign:'center',
-                padding:'32px', letterSpacing:'3px', fontSize:'11px' },
-
-  bottomGrid: { display:'grid', gridTemplateColumns:'1fr 1fr',
-                gap:'12px' },
-  infoCard:   { background:'#0d1526', border:'1px solid #1a3a5c',
-                borderLeft:'3px solid #7a5af8', padding:'16px' },
-  icTitle:    { fontSize:'10px', fontWeight:'700', color:'#7a5af8',
-                letterSpacing:'2px', textTransform:'uppercase',
-                marginBottom:'8px' },
-  icBody:     { fontSize:'9px', color:'#3a5a7a',
-                letterSpacing:'1px', lineHeight:'1.8' },
-
-  statsMini:  { background:'#0d1526', border:'1px solid #1a3a5c',
-                padding:'16px', display:'flex',
-                flexDirection:'column', gap:'0' },
-  smTitle:    { fontSize:'10px', fontWeight:'700', color:'#4a8adc',
-                letterSpacing:'2px', textTransform:'uppercase',
-                marginBottom:'8px', borderLeft:'3px solid #2a6fc4',
-                paddingLeft:'8px' },
-  smRow:      { display:'flex', alignItems:'center',
-                justifyContent:'space-between', padding:'6px 0' },
-  smLbl:      { fontSize:'9px', color:'#2a5a7a',
-                letterSpacing:'1.5px', textTransform:'uppercase' },
-  smVal:      { fontSize:'11px', fontWeight:'700',
-                fontFamily:"'Courier New', monospace" },
-
-  footer:     { display:'flex', alignItems:'center',
-                justifyContent:'space-between',
-                marginTop:'14px', paddingTop:'10px',
-                borderTop:'1px solid #0d1a2e' },
-  footerTxt:  { fontSize:'9px', color:'#1a3a5a', letterSpacing:'1.5px' },
-  enc:        { background:'#06090f', border:'1px solid #0d1f35',
-                color:'#1e4a6a', fontSize:'9px',
-                padding:'3px 10px', letterSpacing:'2px', borderRadius:'2px' },
+  page:      { background:'#0a0e1a', minHeight:'100vh',
+               color:'#c8d8f0',
+               fontFamily:"'Courier New',monospace",
+               padding:'0 0 60px' },
+  loading:   { color:'#2a6fc4', textAlign:'center',
+               marginTop:'4rem', letterSpacing:'3px',
+               fontSize:'12px' },
+  header:    { background:
+                 'linear-gradient(135deg,#0f1e3d,#1a2d5a)',
+               borderBottom:'2px solid #1e40af',
+               padding:'20px 32px',
+               display:'flex', gap:'16px',
+               alignItems:'center', marginBottom:'24px' },
+  shield:    { width:'36px', height:'36px',
+               background:'#1a3a5c',
+               border:'2px solid #2a6fc4',
+               borderRadius:'4px', display:'flex',
+               alignItems:'center',
+               justifyContent:'center',
+               fontSize:'18px', flexShrink:0 },
+  headerTitle:{ fontSize:'14px', fontWeight:'700',
+                color:'#60a5fa', letterSpacing:'2px',
+                textTransform:'uppercase' },
+  headerSub: { fontSize:'10px', color:'#4a7aaa',
+               letterSpacing:'1px', marginTop:'2px' },
+  infoBanner:{ maxWidth:'1000px', margin:'0 auto 20px',
+               background:'#021207',
+               border:'1px solid #166534',
+               color:'#4ade80', padding:'12px 20px',
+               fontSize:'11px', letterSpacing:'0.5px',
+               lineHeight:'1.6' },
+  statsRow:  { maxWidth:'1000px', margin:'0 auto 20px',
+               display:'grid',
+               gridTemplateColumns:'repeat(3,1fr)',
+               gap:'12px' },
+  statBox:   { background:'#0d1526',
+               border:'1px solid #1a3a5c',
+               padding:'16px', textAlign:'center' },
+  statVal:   { fontSize:'22px', fontWeight:'700',
+               color:'#3a8adc', letterSpacing:'1px' },
+  statLabel: { fontSize:'9px', color:'#4a7aaa',
+               letterSpacing:'2px', marginTop:'4px' },
+  card:      { maxWidth:'1000px', margin:'0 auto 20px',
+               background:'#0d1526',
+               border:'1px solid #1a3a5c',
+               padding:'20px' },
+  cardTitle: { fontSize:'10px', fontWeight:'700',
+               color:'#4a8adc', letterSpacing:'3px',
+               borderLeft:'3px solid #2a6fc4',
+               paddingLeft:'10px', marginBottom:'16px' },
+  empty:     { textAlign:'center', padding:'40px 0' },
+  emptyText: { fontSize:'12px', color:'#2a5a7a',
+               letterSpacing:'2px', marginTop:'12px',
+               fontWeight:'700' },
+  emptySub:  { fontSize:'10px', color:'#1a3a5a',
+               marginTop:'8px', letterSpacing:'1px' },
+  table:     { width:'100%', borderCollapse:'collapse',
+               fontSize:'11px' },
+  thead:     { background:'#0a1020',
+               borderBottom:'2px solid #1a3a5c' },
+  th:        { padding:'10px 12px', textAlign:'left',
+               color:'#2a5a8a', letterSpacing:'2px',
+               fontSize:'9px', textTransform:'uppercase',
+               fontWeight:'700' },
+  tr:        { borderBottom:'1px solid #0f1e35' },
+  td:        { padding:'10px 12px', color:'#a0c0e8',
+               verticalAlign:'middle' },
+  numCell:   { fontFamily:"'Courier New',monospace",
+               color:'#2a5a7a', textAlign:'center' },
+  fileCell:  { color:'#6a9abf',
+               fontFamily:"'Courier New',monospace",
+               fontSize:'10px' },
+  timeCell:  { fontFamily:"'Courier New',monospace",
+               fontSize:'10px', color:'#2a5a7a' },
+  idTag:     { background:'#0a1a30',
+               border:'1px solid #1a3a5c',
+               color:'#3a8adc', fontSize:'10px',
+               padding:'3px 8px', letterSpacing:'1px',
+               fontFamily:"'Courier New',monospace" },
+  confBadge: { border:'1px solid',
+               fontSize:'10px', padding:'2px 8px',
+               fontFamily:"'Courier New',monospace",
+               letterSpacing:'1px' },
+  legalBox:  { maxWidth:'1000px', margin:'0 auto',
+               background:'#0d1526',
+               borderLeft:'4px solid #2a6fc4',
+               padding:'16px 20px' },
+  legalTitle:{ fontSize:'10px', fontWeight:'700',
+               color:'#60a5fa', letterSpacing:'2px',
+               marginBottom:'8px' },
+  legalText: { fontSize:'10px', color:'#4a7aaa',
+               lineHeight:'1.8', letterSpacing:'0.5px' },
 };

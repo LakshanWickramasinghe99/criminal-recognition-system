@@ -1,999 +1,638 @@
-// frontend/src/pages/CriminalRecord.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
 const API = 'http://localhost:8000';
 
-const EVIDENCE_TYPES = [
-  'Select Type', 'Photograph', 'Video Recording',
-  'CCTV Footage', 'Forensic Report', 'DNA Report',
-  'Fingerprint Report', 'Witness Statement',
-  'Medical Report', 'Financial Record',
-  'Digital Evidence', 'Physical Evidence', 'Other'
-];
+/* ── Inject styles once ── */
+if (!document.getElementById('lecs-record-styles')) {
+  const tag = document.createElement('style');
+  tag.id = 'lecs-record-styles';
+  tag.textContent = `
+    @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes flickerIn { 0%{opacity:0} 20%{opacity:0.8} 40%{opacity:0.2} 60%{opacity:1} 80%{opacity:0.6} 100%{opacity:1} }
+    .lecs-rec { animation: fadeIn 0.3s ease; }
+    .lecs-rec-inp:focus { border-color: #2a6fc4 !important; outline: none; }
+    .lecs-rec-inp:hover { border-color: #1a4a6a !important; }
+    .lecs-nav-btn:hover { background: #0d1a2e !important; color: #a0c8f0 !important; }
+    .lecs-tab:hover { color: #a0c8f0 !important; }
+    .lecs-card:hover { border-color: #2a5a7a !important; }
+    .lecs-photo-flicker { animation: flickerIn 0.5s ease forwards; }
+  `;
+  document.head.appendChild(tag);
+}
 
-const VERDICTS = [
-  'Pending', 'Guilty', 'Not Guilty',
-  'Partially Guilty', 'Case Dismissed',
-  'Acquitted', 'Referred'
-];
+/* ── Shared atoms ── */
+function FieldRow({ label, value, mono, highlight }) {
+  return (
+    <div style={{
+      display: 'flex', gap: '12px', padding: '7px 0',
+      borderBottom: '1px solid #0a1525',
+    }}>
+      <div style={{
+        fontSize: '9px', color: '#2a5a8a', letterSpacing: '1.5px',
+        textTransform: 'uppercase', width: '130px', flexShrink: 0, paddingTop: '2px',
+      }}>{label}</div>
+      <div style={{
+        fontSize: '11px', lineHeight: '1.5', wordBreak: 'break-all',
+        fontFamily: mono ? "'Courier New', monospace" : 'inherit',
+        color: highlight === 'red'   ? '#e05050'
+             : highlight === 'green' ? '#22c55e'
+             : highlight === 'blue'  ? '#3a8adc'
+             : '#c0d8f0',
+      }}>{value || '—'}</div>
+    </div>
+  );
+}
 
+function SectionHead({ title }) {
+  return (
+    <div style={{
+      fontSize: '9px', color: '#3a8adc', letterSpacing: '3px',
+      textTransform: 'uppercase', margin: '18px 0 10px',
+      borderLeft: '2px solid #2a6fc4', paddingLeft: '8px',
+    }}>{title}</div>
+  );
+}
+
+function EmptyState({ icon, text }) {
+  return (
+    <div style={{
+      textAlign: 'center', padding: '40px 20px',
+      color: '#1a3a5a', fontSize: '11px', letterSpacing: '2px',
+    }}>
+      <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.4 }}>{icon}</div>
+      {text}
+    </div>
+  );
+}
+
+function Badge({ label, type }) {
+  const colors = {
+    red:    { bg: '#1a0505', border: '#4a1a1a', color: '#e05050' },
+    green:  { bg: '#051a0a', border: '#1a4a1a', color: '#22c55e' },
+    blue:   { bg: '#0a1a30', border: '#1a3a5c', color: '#3a8adc' },
+    purple: { bg: '#0f0a1a', border: '#2a1a4a', color: '#7a5af8' },
+    amber:  { bg: '#1a1000', border: '#3a2a00', color: '#d97706' },
+    gray:   { bg: '#0d1020', border: '#1a2040', color: '#4a7aaa' },
+  };
+  const c = colors[type] || colors.gray;
+  return (
+    <span style={{
+      background: c.bg, border: `1px solid ${c.border}`, color: c.color,
+      fontSize: '9px', padding: '2px 8px', letterSpacing: '1px',
+      textTransform: 'uppercase', display: 'inline-block',
+    }}>{label}</span>
+  );
+}
+
+function verdictType(v) {
+  if (!v) return 'gray';
+  const vl = v.toLowerCase();
+  if (vl === 'guilty')     return 'red';
+  if (vl === 'not guilty') return 'green';
+  if (vl === 'pending')    return 'amber';
+  return 'gray';
+}
+
+function statusType(s) {
+  if (!s) return 'gray';
+  const sl = s.toLowerCase();
+  if (sl === 'wanted')               return 'red';
+  if (sl === 'convicted')            return 'purple';
+  if (sl === 'arrested')             return 'amber';
+  if (sl === 'under investigation')  return 'blue';
+  if (sl === 'released')             return 'green';
+  return 'gray';
+}
+
+function PhotoDisplay({ criminal_id, large }) {
+  const [err, setErr] = useState(false);
+  const size = large
+    ? { width: '100%', height: '220px' }
+    : { width: '60px', height: '72px' };
+  if (err) return (
+    <div style={{
+      ...size, background: '#070d1a', border: '1px solid #1a3a5c',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#1a3a5c', fontSize: large ? '48px' : '22px',
+    }}>👤</div>
+  );
+  return (
+    <img
+      className="lecs-photo-flicker"
+      src={`${API}/api/enrollment/photo/${criminal_id}`}
+      alt={criminal_id}
+      onError={() => setErr(true)}
+      style={{
+        ...size, objectFit: 'cover', objectPosition: 'top center',
+        display: 'block', border: '1px solid #1a3a5c',
+      }}
+    />
+  );
+}
+
+/* ── Tab panels ── */
+
+function PersonalPanel({ rec }) {
+  return (
+    <>
+      <SectionHead title="Personal Information" />
+      <FieldRow label="Full Name"    value={rec.name}       highlight="blue" />
+      <FieldRow label="Age"          value={rec.age} />
+      <FieldRow label="Date of Birth" value={rec.dob} />
+      <FieldRow label="NIC Number"   value={rec.nic_number} mono />
+      <FieldRow label="Gender"       value={rec.gender} />
+      <FieldRow label="Nationality"  value={rec.nationality} />
+      <FieldRow label="Phone"        value={rec.phone} />
+      <FieldRow label="Occupation"   value={rec.occupation} />
+      <FieldRow label="Address"      value={rec.address} />
+
+      <SectionHead title="Physical Description" />
+      <FieldRow label="Height"       value={rec.height_cm   ? `${rec.height_cm} cm`  : null} />
+      <FieldRow label="Weight"       value={rec.weight_kg   ? `${rec.weight_kg} kg`  : null} />
+      <FieldRow label="Eye Color"    value={rec.eye_color} />
+      <FieldRow label="Marks"        value={rec.distinguishing_marks} />
+
+      <SectionHead title="Registering Officer" />
+      <FieldRow label="Officer ID"   value={rec.officer_id} mono />
+      <FieldRow label="Officer Name" value={rec.officer_name} />
+      <FieldRow label="Badge No."    value={rec.badge_number} mono />
+      <FieldRow label="Station"      value={rec.station} />
+      <FieldRow label="Rank"         value={rec.rank} />
+    </>
+  );
+}
+
+function CrimesPanel({ crimes }) {
+  if (!crimes?.length) return <EmptyState icon="📋" text="NO CRIME RECORDS FOUND" />;
+  return (
+    <>
+      {crimes.map((c, i) => (
+        <div key={i} className="lecs-card" style={{
+          background: '#0a0f1e', border: '1px solid #1a3a5c',
+          padding: '14px', marginBottom: '12px',
+          borderLeft: '3px solid #e05050',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: '10px',
+            paddingBottom: '8px', borderBottom: '1px solid #0f1e35',
+          }}>
+            <span style={{ color: '#3a8adc', fontSize: '11px', letterSpacing: '1px' }}>
+              {c.case_id || `CRIME-${i + 1}`}
+            </span>
+            <Badge label={c.crime_status || 'Unknown'} type={statusType(c.crime_status)} />
+          </div>
+          <FieldRow label="Crime Type"    value={c.crime_type}        highlight="red" />
+          <FieldRow label="Date"          value={c.crime_date} />
+          <FieldRow label="Location"      value={c.crime_location} />
+          <FieldRow label="Weapons Used"  value={c.weapons_used} />
+          <FieldRow label="Victims"       value={c.victims_count} />
+          <FieldRow label="Damage Value"  value={c.damage_value} />
+          <FieldRow label="Description"   value={c.crime_description} />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function EvidencePanel({ evidences }) {
+  if (!evidences?.length) return <EmptyState icon="🗂️" text="NO EVIDENCE RECORDS FOUND" />;
+  const typeColor = t => {
+    if (!t) return 'gray';
+    const tl = t.toLowerCase();
+    if (tl === 'image')    return 'blue';
+    if (tl === 'video')    return 'purple';
+    if (tl === 'forensic') return 'amber';
+    if (tl === 'document') return 'green';
+    return 'gray';
+  };
+  return (
+    <>
+      {evidences.map((e, i) => (
+        <div key={i} className="lecs-card" style={{
+          background: '#0a0f1e', border: '1px solid #1a3a5c',
+          padding: '14px', marginBottom: '12px',
+          borderLeft: '3px solid #3a8adc',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: '10px',
+            paddingBottom: '8px', borderBottom: '1px solid #0f1e35',
+          }}>
+            <span style={{ color: '#3a8adc', fontSize: '11px', letterSpacing: '1px', fontFamily: "'Courier New', monospace" }}>
+              {e.evidence_id}
+            </span>
+            <Badge label={e.evidence_type || 'unknown'} type={typeColor(e.evidence_type)} />
+          </div>
+          <FieldRow label="Description"    value={e.description} />
+          <FieldRow label="Collected By"   value={e.collected_by} />
+          <FieldRow label="Collected On"   value={e.collected_date} />
+          <FieldRow label="File Hash"      value={e.file_hash}      mono highlight="blue" />
+          <FieldRow label="Blockchain TX"  value={e.blockchain_tx}  mono />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function CourtPanel({ court_decisions }) {
+  if (!court_decisions?.length) return <EmptyState icon="⚖" text="NO COURT DECISIONS RECORDED" />;
+  return (
+    <>
+      {court_decisions.map((d, i) => (
+        <div key={i} className="lecs-card" style={{
+          background: '#0a0f1e', border: '1px solid #1a3a5c',
+          padding: '14px', marginBottom: '12px',
+          borderLeft: `3px solid ${
+            d.verdict?.toLowerCase() === 'guilty'     ? '#e05050' :
+            d.verdict?.toLowerCase() === 'not guilty' ? '#22c55e' : '#7a5af8'
+          }`,
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: '10px',
+            paddingBottom: '8px', borderBottom: '1px solid #0f1e35',
+          }}>
+            <span style={{ color: '#3a8adc', fontSize: '11px', letterSpacing: '1px', fontFamily: "'Courier New', monospace" }}>
+              {d.decision_id}
+            </span>
+            <Badge label={d.verdict || 'Pending'} type={verdictType(d.verdict)} />
+          </div>
+          <FieldRow label="Court Name"     value={d.court_name} />
+          <FieldRow label="Judge"          value={d.judge_name} />
+          <FieldRow label="Case Number"    value={d.case_number}    mono />
+          <FieldRow label="Hearing Date"   value={d.hearing_date} />
+          <FieldRow label="Sentence"       value={d.sentence} />
+          <FieldRow label="Sentence Start" value={d.sentence_start} />
+          <FieldRow label="Sentence End"   value={d.sentence_end} />
+          <FieldRow label="Appeal Status"  value={d.appeal_status} />
+          <FieldRow label="Notes"          value={d.notes} />
+          <FieldRow label="Blockchain TX"  value={d.blockchain_tx}  mono />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function BlockchainPanel({ rec }) {
+  return (
+    <>
+      <SectionHead title="On-Chain Identity" />
+      <FieldRow label="Criminal ID"    value={rec.criminal_id}    mono highlight="blue" />
+      <FieldRow label="Embedding Hash" value={rec.embedding_hash} mono />
+      <FieldRow label="Registered At"
+        value={rec.registered_at
+          ? new Date(rec.registered_at * 1000).toLocaleString('en-GB', { hour12: false })
+          : null} />
+      <FieldRow label="Registered By"  value={rec.registered_by}  mono />
+      <FieldRow label="Active"
+        value={rec.is_active ? 'YES — WANTED' : 'NO — INACTIVE'}
+        highlight={rec.is_active ? 'red' : 'green'} />
+
+      {rec.bc_evidence?.length > 0 && <>
+        <SectionHead title={`On-Chain Evidence (${rec.bc_evidence.length})`} />
+        {rec.bc_evidence.map((e, i) => (
+          <div key={i} style={{
+            background: '#070d1a', border: '1px solid #0f1e35',
+            padding: '10px 14px', marginBottom: '8px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '10px', color: '#3a8adc', fontFamily: "'Courier New', monospace" }}>
+                {e.evidence_id}
+              </span>
+              <span style={{ fontSize: '9px', color: '#4a7aaa' }}>
+                {new Date(Number(e.logged_at) * 1000).toLocaleString('en-GB', { hour12: false })}
+              </span>
+            </div>
+            <div style={{ fontSize: '9px', color: '#2a5a7a', letterSpacing: '1px', wordBreak: 'break-all' }}>
+              Hash: {e.file_hash || '—'}
+            </div>
+          </div>
+        ))}
+      </>}
+
+      {rec.bc_court?.length > 0 && <>
+        <SectionHead title={`On-Chain Court Decisions (${rec.bc_court.length})`} />
+        {rec.bc_court.map((d, i) => (
+          <div key={i} style={{
+            background: '#070d1a', border: '1px solid #0f1e35',
+            padding: '10px 14px', marginBottom: '8px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '10px', color: '#3a8adc', fontFamily: "'Courier New', monospace" }}>
+                {d.decision_id}
+              </span>
+              <Badge label={d.verdict || 'Pending'} type={verdictType(d.verdict)} />
+            </div>
+            <div style={{ fontSize: '9px', color: '#2a5a7a', letterSpacing: '1px' }}>{d.court_name}</div>
+            <div style={{ fontSize: '9px', color: '#1a3a5a', marginTop: '4px' }}>
+              {new Date(Number(d.logged_at) * 1000).toLocaleString('en-GB', { hour12: false })}
+            </div>
+          </div>
+        ))}
+      </>}
+    </>
+  );
+}
+
+/* ── Main component ── */
 export default function CriminalRecord() {
-  const [searchId, setSearchId]     = useState('');
-  const [record, setRecord]         = useState(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState(null);
-  const [activeTab, setActiveTab]   = useState('overview');
-  const [allIds, setAllIds]         = useState([]);
+  const [query,   setQuery]   = useState('');
+  const [rec,     setRec]     = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState(null);
+  const [tab,     setTab]     = useState('personal');
 
-  // Evidence form
-  const [evForm, setEvForm] = useState({
-    evidence_type: '', description: '',
-    collected_by: '', collected_date: ''
-  });
-  const [evFile, setEvFile]     = useState(null);
-  const [evLoading, setEvLoading] = useState(false);
-  const [evResult, setEvResult]   = useState(null);
-
-  // Court form
-  const [ctForm, setCtForm] = useState({
-    court_name: '', judge_name: '', case_number: '',
-    hearing_date: '', verdict: '', sentence: '',
-    sentence_start: '', sentence_end: '',
-    appeal_status: '', notes: ''
-  });
-  const [ctLoading, setCtLoading] = useState(false);
-  const [ctResult, setCtResult]   = useState(null);
-
-  // Load all criminal IDs for dropdown
-  useEffect(() => {
-    axios.get(`${API}/api/dashboard/criminals`)
-      .then(r => setAllIds(r.data.criminals || []))
-      .catch(() => {});
-  }, []);
-
-  const searchCriminal = async () => {
-    if (!searchId.trim()) return;
-    setLoading(true);
-    setError(null);
-    setRecord(null);
+  const fetchRecord = async (id) => {
+    const target = (id || query).trim();
+    if (!target) return;
+    setLoading(true); setError(null); setRec(null);
     try {
-      const r = await axios.get(
-        `${API}/api/records/full/${searchId.trim()}`
-      );
-      setRecord(r.data);
-      setActiveTab('overview');
+      const r = await axios.get(`${API}/api/records/full/${target}`);
+      setRec(r.data);
+      setTab('personal');
     } catch (e) {
-      setError(e.response?.data?.detail || 'Criminal not found');
+      setError(e.response?.data?.detail || `Record "${target}" not found.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const submitEvidence = async () => {
-    if (!evForm.evidence_type ||
-        evForm.evidence_type === 'Select Type') {
-      alert('Please select evidence type');
-      return;
-    }
-    setEvLoading(true);
-    setEvResult(null);
-    const data = new FormData();
-    Object.entries(evForm).forEach(([k, v]) => data.append(k, v));
-    if (evFile) data.append('file', evFile);
-    try {
-      const r = await axios.post(
-        `${API}/api/records/evidence/${record.criminal_id}`,
-        data
-      );
-      setEvResult(r.data);
-      // Refresh record
-      const updated = await axios.get(
-        `${API}/api/records/full/${record.criminal_id}`
-      );
-      setRecord(updated.data);
-      setEvForm({
-        evidence_type: '', description: '',
-        collected_by: '', collected_date: ''
-      });
-      setEvFile(null);
-    } catch (e) {
-      alert(e.response?.data?.detail || 'Failed to add evidence');
-    } finally {
-      setEvLoading(false);
-    }
-  };
-
-  const submitCourt = async () => {
-    if (!ctForm.court_name || !ctForm.verdict) {
-      alert('Court name and verdict are required');
-      return;
-    }
-    setCtLoading(true);
-    setCtResult(null);
-    const data = new FormData();
-    Object.entries(ctForm).forEach(([k, v]) => data.append(k, v));
-    try {
-      const r = await axios.post(
-        `${API}/api/records/court/${record.criminal_id}`,
-        data
-      );
-      setCtResult(r.data);
-      const updated = await axios.get(
-        `${API}/api/records/full/${record.criminal_id}`
-      );
-      setRecord(updated.data);
-      setCtForm({
-        court_name: '', judge_name: '', case_number: '',
-        hearing_date: '', verdict: '', sentence: '',
-        sentence_start: '', sentence_end: '',
-        appeal_status: '', notes: ''
-      });
-    } catch (e) {
-      alert(e.response?.data?.detail || 'Failed to add court decision');
-    } finally {
-      setCtLoading(false);
-    }
-  };
+  const TABS = [
+    { id: 'personal',   label: 'Personal',        count: null },
+    { id: 'crimes',     label: 'Crimes',           count: rec?.crimes?.length },
+    { id: 'evidence',   label: 'Evidence',         count: rec?.evidences?.length },
+    { id: 'court',      label: 'Court Decisions',  count: rec?.court_decisions?.length },
+    { id: 'blockchain', label: 'Blockchain',       count: null },
+  ];
 
   return (
-    <div style={s.page}>
+    <div className="lecs-rec" style={s.pg}>
 
-      {/* Header */}
-      <div style={s.header}>
-        <div style={s.headerLeft}>
-          <div style={s.shield}>⚖</div>
+      {/* ── Header ── */}
+      <div style={s.pageHeader}>
+        <div style={s.phLeft}>
+          <div style={s.phIcon}>≡</div>
           <div>
-            <div style={s.headerTitle}>Criminal Record Management</div>
-            <div style={s.headerSub}>
-              Evidence · Court Decisions · Full Record View
-            </div>
+            <div style={s.phTitle}>Criminal Records</div>
+            <div style={s.phSub}>FULL RECORD VIEWER — BLOCKCHAIN VERIFIED</div>
           </div>
         </div>
+        <span style={s.statusPill}>SECURE ACCESS</span>
       </div>
 
-      {/* Search Bar */}
-      <div style={s.searchBox}>
-        <div style={s.searchLabel}>SEARCH CRIMINAL RECORD</div>
-        <div style={s.searchRow}>
-          <select
-            value={searchId}
-            onChange={e => setSearchId(e.target.value)}
-            style={s.searchSelect}
-          >
-            <option value="">— Select Criminal ID —</option>
-            {allIds.map(c => (
-              <option key={c.criminal_id} value={c.criminal_id}>
-                {c.criminal_id} — {c.name}
-              </option>
-            ))}
-          </select>
-          <div style={s.searchOr}>OR</div>
-          <input
-            value={searchId}
-            onChange={e => setSearchId(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && searchCriminal()}
-            placeholder="Type Criminal ID manually..."
-            style={s.searchInput}
-          />
-          <button onClick={searchCriminal}
-            disabled={loading} style={s.searchBtn}>
-            {loading ? '⏳ SEARCHING...' : '🔍 SEARCH'}
-          </button>
-        </div>
-        {error && <div style={s.errorMsg}>⚠️ {error}</div>}
+      {/* ── Search bar ── */}
+      <div style={s.searchBar}>
+        <div style={s.searchIcon}>🔍</div>
+        <input
+          className="lecs-rec-inp"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && fetchRecord()}
+          placeholder="Enter Criminal ID  (e.g. CRM-A1B2C3D4)"
+          style={s.searchInp}
+        />
+        <button onClick={() => fetchRecord()} disabled={loading} style={s.searchBtn}>
+          {loading ? 'RETRIEVING...' : 'RETRIEVE RECORD'}
+        </button>
       </div>
 
-      {/* Record View */}
-      {record && (
-        <div style={s.recordWrap}>
-
-          {/* Criminal Header Card */}
-          <div style={s.criminalHeader}>
-            <div style={s.criminalPhotoBox}>
-              <img
-                src={`${API}/api/enrollment/photo/${record.criminal_id}`}
-                alt={record.name}
-                style={s.criminalPhoto}
-                onError={e => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-              <div style={{ ...s.photoFallback, display: 'none' }}>👤</div>
-            </div>
-            <div style={s.criminalMeta}>
-              <div style={s.criminalName}>{record.name}</div>
-              <div style={s.criminalIdBadge}>{record.criminal_id}</div>
-              <div style={s.metaGrid}>
-                <MetaItem label="NIC" value={record.nic_number} />
-                <MetaItem label="Age" value={record.age} />
-                <MetaItem label="Gender" value={record.gender} />
-                <MetaItem label="Nationality" value={record.nationality} />
-                <MetaItem label="Station" value={record.station} />
-                <MetaItem label="Officer" value={record.officer_name} />
-              </div>
-            </div>
-            <div style={s.criminalStats}>
-              <StatBubble
-                label="Crimes" value={record.crimes?.length || 0}
-                color="#e05050" />
-              <StatBubble
-                label="Evidence" value={record.evidences?.length || 0}
-                color="#f59e0b" />
-              <StatBubble
-                label="Court Records"
-                value={record.court_decisions?.length || 0}
-                color="#7a5af8" />
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div style={s.tabs}>
-            {[
-              { id: 'overview',  label: '📋 Overview'         },
-              { id: 'crimes',    label: '⚖️ Crimes'            },
-              { id: 'evidence',  label: '🗂️ Evidence'          },
-              { id: 'court',     label: '🏛️ Court Decisions'   },
-              { id: 'blockchain',label: '🔗 Blockchain'        },
-            ].map(tab => (
-              <button key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  ...s.tab,
-                  ...(activeTab === tab.id ? s.tabActive : {})
-                }}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── TAB: Overview ── */}
-          {activeTab === 'overview' && (
-            <div style={s.tabContent}>
-              <Section title="Personal Information">
-                <Grid2>
-                  <InfoRow label="Full Name"    value={record.name} />
-                  <InfoRow label="Criminal ID"  value={record.criminal_id} />
-                  <InfoRow label="NIC Number"   value={record.nic_number} />
-                  <InfoRow label="Date of Birth" value={record.dob} />
-                  <InfoRow label="Age"          value={record.age} />
-                  <InfoRow label="Gender"       value={record.gender} />
-                  <InfoRow label="Nationality"  value={record.nationality} />
-                  <InfoRow label="Phone"        value={record.phone} />
-                  <InfoRow label="Occupation"   value={record.occupation} />
-                  <InfoRow label="Height"
-                    value={record.height_cm
-                      ? `${record.height_cm} cm` : null} />
-                  <InfoRow label="Weight"
-                    value={record.weight_kg
-                      ? `${record.weight_kg} kg` : null} />
-                  <InfoRow label="Eye Color"    value={record.eye_color} />
-                </Grid2>
-                <InfoRow label="Address" value={record.address} wide />
-                <InfoRow label="Distinguishing Marks"
-                  value={record.distinguishing_marks} wide />
-              </Section>
-
-              <Section title="Arresting Officer">
-                <Grid2>
-                  <InfoRow label="Officer ID"   value={record.officer_id} />
-                  <InfoRow label="Officer Name" value={record.officer_name} />
-                  <InfoRow label="Badge Number" value={record.badge_number} />
-                  <InfoRow label="Rank"         value={record.rank} />
-                  <InfoRow label="Station"      value={record.station} />
-                  <InfoRow label="Registered"
-                    value={record.registered_at
-                      ? new Date(record.registered_at * 1000)
-                          .toLocaleString() : null} />
-                </Grid2>
-              </Section>
-
-              <Section title="Blockchain Record">
-                <InfoRow label="Embedding Hash"
-                  value={record.embedding_hash} mono />
-                <InfoRow label="Registered By"
-                  value={record.registered_by} mono />
-              </Section>
-            </div>
-          )}
-
-          {/* ── TAB: Crimes ── */}
-          {activeTab === 'crimes' && (
-            <div style={s.tabContent}>
-              <Section title={`Crime Records (${record.crimes?.length || 0})`}>
-                {!record.crimes?.length ? (
-                  <EmptyState msg="No crime records found" />
-                ) : record.crimes.map((crime, i) => (
-                  <div key={i} style={s.crimeCard}>
-                    <div style={s.crimeHeader}>
-                      <span style={s.crimeType}>{crime.crime_type}</span>
-                      <span style={{
-                        ...s.statusBadge,
-                        background: crime.crime_status === 'Convicted'
-                          ? '#14532d' : crime.crime_status === 'Wanted'
-                          ? '#450a0a' : '#1c1007',
-                        color: crime.crime_status === 'Convicted'
-                          ? '#22c55e' : crime.crime_status === 'Wanted'
-                          ? '#ef4444' : '#f59e0b',
-                      }}>
-                        {crime.crime_status}
-                      </span>
-                    </div>
-                    <Grid2>
-                      <InfoRow label="Case ID"  value={crime.case_id} />
-                      <InfoRow label="Date"     value={crime.crime_date} />
-                      <InfoRow label="Location" value={crime.crime_location} />
-                      <InfoRow label="Weapons"  value={crime.weapons_used} />
-                      <InfoRow label="Victims"  value={crime.victims_count} />
-                      <InfoRow label="Damage"   value={crime.damage_value} />
-                    </Grid2>
-                    <InfoRow label="Description"
-                      value={crime.crime_description} wide />
-                  </div>
-                ))}
-              </Section>
-            </div>
-          )}
-
-          {/* ── TAB: Evidence ── */}
-          {activeTab === 'evidence' && (
-            <div style={s.tabContent}>
-
-              {/* Add Evidence Form */}
-              <Section title="Add New Evidence">
-                <div style={s.formGrid}>
-                  <FormField label="Evidence Type *">
-                    <select
-                      value={evForm.evidence_type}
-                      onChange={e => setEvForm({
-                        ...evForm, evidence_type: e.target.value
-                      })}
-                      style={s.select}>
-                      {EVIDENCE_TYPES.map(t => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                  <FormField label="Collected By">
-                    <input
-                      value={evForm.collected_by}
-                      onChange={e => setEvForm({
-                        ...evForm, collected_by: e.target.value
-                      })}
-                      placeholder="Officer name or lab"
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Collection Date">
-                    <input type="date"
-                      value={evForm.collected_date}
-                      onChange={e => setEvForm({
-                        ...evForm, collected_date: e.target.value
-                      })}
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Evidence File">
-                    <label style={s.fileLabel}>
-                      📎 Choose File
-                      <input type="file"
-                        onChange={e => setEvFile(e.target.files[0])}
-                        style={{ display: 'none' }} />
-                    </label>
-                    {evFile && (
-                      <span style={s.fileName}>✅ {evFile.name}</span>
-                    )}
-                  </FormField>
-                </div>
-                <FormField label="Description">
-                  <textarea
-                    value={evForm.description}
-                    onChange={e => setEvForm({
-                      ...evForm, description: e.target.value
-                    })}
-                    placeholder="Detailed description of evidence..."
-                    style={{ ...s.input, height: '80px',
-                             resize: 'vertical' }} />
-                </FormField>
-                <button onClick={submitEvidence}
-                  disabled={evLoading} style={s.submitBtn}>
-                  {evLoading
-                    ? '⏳ Logging on Blockchain...'
-                    : '🔗 Add Evidence to Blockchain'}
-                </button>
-                {evResult && (
-                  <div style={s.successBox}>
-                    ✅ Evidence {evResult.evidence_id} logged!
-                    <div style={s.txLine}>
-                      TX: {evResult.blockchain_tx}
-                    </div>
-                  </div>
-                )}
-              </Section>
-
-              {/* Existing Evidence */}
-              <Section
-                title={`Evidence Records (${record.evidences?.length || 0})`}>
-                {!record.evidences?.length ? (
-                  <EmptyState msg="No evidence records found" />
-                ) : record.evidences.map((ev, i) => (
-                  <div key={i} style={s.evidenceCard}>
-                    <div style={s.evidenceHeader}>
-                      <span style={s.evidenceType}>
-                        {ev.evidence_type === 'Photograph'   ? '🖼️' :
-                         ev.evidence_type === 'Video Recording' ||
-                         ev.evidence_type === 'CCTV Footage' ? '🎥' :
-                         ev.evidence_type === 'DNA Report' ||
-                         ev.evidence_type === 'Forensic Report' ? '🧪' :
-                         ev.evidence_type === 'Digital Evidence' ? '💾' : '📄'}
-                        {' '}{ev.evidence_type}
-                      </span>
-                      <span style={s.evidenceId}>{ev.evidence_id}</span>
-                    </div>
-                    <Grid2>
-                      <InfoRow label="Collected By"
-                        value={ev.collected_by} />
-                      <InfoRow label="Date"
-                        value={ev.collected_date} />
-                    </Grid2>
-                    <InfoRow label="Description"
-                      value={ev.description} wide />
-                    {ev.file_hash && (
-                      <InfoRow label="File Hash"
-                        value={ev.file_hash} mono />
-                    )}
-                    {ev.blockchain_tx && (
-                      <div style={s.blockchainRef}>
-                        🔗 Blockchain TX: {ev.blockchain_tx?.slice(0, 40)}...
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </Section>
-            </div>
-          )}
-
-          {/* ── TAB: Court Decisions ── */}
-          {activeTab === 'court' && (
-            <div style={s.tabContent}>
-
-              {/* Add Court Decision Form */}
-              <Section title="Add Court Decision">
-                <div style={s.formGrid}>
-                  <FormField label="Court Name *">
-                    <input
-                      value={ctForm.court_name}
-                      onChange={e => setCtForm({
-                        ...ctForm, court_name: e.target.value
-                      })}
-                      placeholder="e.g. Colombo High Court"
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Judge Name">
-                    <input
-                      value={ctForm.judge_name}
-                      onChange={e => setCtForm({
-                        ...ctForm, judge_name: e.target.value
-                      })}
-                      placeholder="Presiding judge"
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Case Number">
-                    <input
-                      value={ctForm.case_number}
-                      onChange={e => setCtForm({
-                        ...ctForm, case_number: e.target.value
-                      })}
-                      placeholder="e.g. HC/CR/2026/001"
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Hearing Date">
-                    <input type="date"
-                      value={ctForm.hearing_date}
-                      onChange={e => setCtForm({
-                        ...ctForm, hearing_date: e.target.value
-                      })}
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Verdict *">
-                    <select
-                      value={ctForm.verdict}
-                      onChange={e => setCtForm({
-                        ...ctForm, verdict: e.target.value
-                      })}
-                      style={s.select}>
-                      <option value="">Select Verdict</option>
-                      {VERDICTS.map(v => (
-                        <option key={v}>{v}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                  <FormField label="Appeal Status">
-                    <select
-                      value={ctForm.appeal_status}
-                      onChange={e => setCtForm({
-                        ...ctForm, appeal_status: e.target.value
-                      })}
-                      style={s.select}>
-                      <option value="">Select Status</option>
-                      <option>No Appeal</option>
-                      <option>Appeal Filed</option>
-                      <option>Appeal Pending</option>
-                      <option>Appeal Rejected</option>
-                      <option>Appeal Granted</option>
-                    </select>
-                  </FormField>
-                  <FormField label="Sentence">
-                    <input
-                      value={ctForm.sentence}
-                      onChange={e => setCtForm({
-                        ...ctForm, sentence: e.target.value
-                      })}
-                      placeholder="e.g. 10 years imprisonment"
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Sentence Start">
-                    <input type="date"
-                      value={ctForm.sentence_start}
-                      onChange={e => setCtForm({
-                        ...ctForm, sentence_start: e.target.value
-                      })}
-                      style={s.input} />
-                  </FormField>
-                  <FormField label="Sentence End">
-                    <input type="date"
-                      value={ctForm.sentence_end}
-                      onChange={e => setCtForm({
-                        ...ctForm, sentence_end: e.target.value
-                      })}
-                      style={s.input} />
-                  </FormField>
-                </div>
-                <FormField label="Notes">
-                  <textarea
-                    value={ctForm.notes}
-                    onChange={e => setCtForm({
-                      ...ctForm, notes: e.target.value
-                    })}
-                    placeholder="Additional court notes..."
-                    style={{ ...s.input, height: '80px',
-                             resize: 'vertical' }} />
-                </FormField>
-                <button onClick={submitCourt}
-                  disabled={ctLoading} style={s.submitBtn}>
-                  {ctLoading
-                    ? '⏳ Logging on Blockchain...'
-                    : '🔗 Add Court Decision to Blockchain'}
-                </button>
-                {ctResult && (
-                  <div style={s.successBox}>
-                    ✅ Court decision {ctResult.decision_id} logged!
-                    <div style={s.txLine}>
-                      TX: {ctResult.blockchain_tx}
-                    </div>
-                  </div>
-                )}
-              </Section>
-
-              {/* Existing Court Decisions */}
-              <Section
-                title={`Court Records (${record.court_decisions?.length || 0})`}>
-                {!record.court_decisions?.length ? (
-                  <EmptyState msg="No court records found" />
-                ) : record.court_decisions.map((cd, i) => (
-                  <div key={i} style={s.courtCard}>
-                    <div style={s.courtHeader}>
-                      <span style={s.courtName}>{cd.court_name}</span>
-                      <span style={{
-                        ...s.verdictBadge,
-                        background:
-                          cd.verdict === 'Guilty'     ? '#450a0a' :
-                          cd.verdict === 'Not Guilty' ? '#052e16' :
-                          '#1c1007',
-                        color:
-                          cd.verdict === 'Guilty'     ? '#ef4444' :
-                          cd.verdict === 'Not Guilty' ? '#22c55e' :
-                          '#f59e0b',
-                      }}>
-                        {cd.verdict || 'Pending'}
-                      </span>
-                    </div>
-                    <Grid2>
-                      <InfoRow label="Decision ID"
-                        value={cd.decision_id} />
-                      <InfoRow label="Case Number"
-                        value={cd.case_number} />
-                      <InfoRow label="Judge"
-                        value={cd.judge_name} />
-                      <InfoRow label="Hearing Date"
-                        value={cd.hearing_date} />
-                      <InfoRow label="Sentence"
-                        value={cd.sentence} />
-                      <InfoRow label="Appeal"
-                        value={cd.appeal_status} />
-                      <InfoRow label="Sentence Start"
-                        value={cd.sentence_start} />
-                      <InfoRow label="Sentence End"
-                        value={cd.sentence_end} />
-                    </Grid2>
-                    <InfoRow label="Notes" value={cd.notes} wide />
-                    {cd.blockchain_tx && (
-                      <div style={s.blockchainRef}>
-                        🔗 Blockchain TX: {cd.blockchain_tx?.slice(0,40)}...
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </Section>
-            </div>
-          )}
-
-          {/* ── TAB: Blockchain ── */}
-          {activeTab === 'blockchain' && (
-            <div style={s.tabContent}>
-              <Section title="Blockchain Verification">
-                <div style={s.blockchainPanel}>
-                  <div style={s.blockchainIcon}>⛓️</div>
-                  <div style={s.blockchainTitle}>
-                    IMMUTABLE RECORD ON ETHEREUM
-                  </div>
-                  <div style={s.blockchainSub}>
-                    All records below are permanently stored and
-                    tamper-proof
-                  </div>
-                </div>
-                <Grid2>
-                  <InfoRow label="Criminal ID"
-                    value={record.criminal_id} />
-                  <InfoRow label="Name" value={record.name} />
-                  <InfoRow label="Registered At"
-                    value={record.registered_at
-                      ? new Date(record.registered_at * 1000)
-                          .toLocaleString() : null} />
-                  <InfoRow label="Registered By"
-                    value={record.registered_by} mono />
-                </Grid2>
-                <InfoRow label="Embedding Hash"
-                  value={record.embedding_hash} mono />
-
-                {/* Blockchain Evidence */}
-                {record.bc_evidence?.length > 0 && (
-                  <>
-                    <div style={s.sectionDivider}>
-                      EVIDENCE TRANSACTIONS
-                    </div>
-                    {record.bc_evidence.map((ev, i) => (
-                      <div key={i} style={s.txRecord}>
-                        <div style={s.txType}>
-                          🗂️ {ev.evidence_type}
-                        </div>
-                        <div style={s.txDetail}>
-                          ID: {ev.evidence_id} |
-                          File Hash: {ev.file_hash?.slice(0,20)}...
-                        </div>
-                        <div style={s.txTime}>
-                          {ev.logged_at
-                            ? new Date(ev.logged_at * 1000)
-                                .toLocaleString()
-                            : '—'}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Blockchain Court Decisions */}
-                {record.bc_court?.length > 0 && (
-                  <>
-                    <div style={s.sectionDivider}>
-                      COURT DECISION TRANSACTIONS
-                    </div>
-                    {record.bc_court.map((cd, i) => (
-                      <div key={i} style={s.txRecord}>
-                        <div style={s.txType}>
-                          🏛️ {cd.court_name}
-                        </div>
-                        <div style={s.txDetail}>
-                          Verdict: {cd.verdict} |
-                          Sentence: {cd.sentence || 'N/A'}
-                        </div>
-                        <div style={s.txTime}>
-                          {cd.logged_at
-                            ? new Date(cd.logged_at * 1000)
-                                .toLocaleString()
-                            : '—'}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </Section>
-            </div>
-          )}
+      {/* ── Error ── */}
+      {error && (
+        <div style={s.errorStrip}>
+          <span style={{ color: '#e05050', marginRight: '8px' }}>✕</span>
+          {error}
         </div>
       )}
-    </div>
-  );
-}
 
-// ── Helper Components ─────────────────────────────────────
-function Section({ title, children }) {
-  return (
-    <div style={s.section}>
-      <div style={s.sectionTitle}>{title}</div>
-      {children}
-    </div>
-  );
-}
+      {/* ── No record yet ── */}
+      {!rec && !loading && !error && (
+        <div style={s.emptySearch}>
+          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.15 }}>◉</div>
+          <div style={{ fontSize: '11px', color: '#1a3a5a', letterSpacing: '3px' }}>
+            ENTER A CRIMINAL ID TO RETRIEVE FULL RECORD
+          </div>
+          <div style={{ fontSize: '9px', color: '#0f2040', letterSpacing: '1px', marginTop: '8px' }}>
+            Records are retrieved from SQLite database and verified against Ethereum blockchain
+          </div>
+        </div>
+      )}
 
-function Grid2({ children }) {
-  return <div style={s.grid2}>{children}</div>;
-}
+      {/* ── Record layout ── */}
+      {rec && (
+        <div style={s.recordGrid}>
 
-function InfoRow({ label, value, mono, wide }) {
-  if (!value && value !== 0) return null;
-  return (
-    <div style={{ ...s.infoRow, ...(wide ? s.infoRowWide : {}) }}>
-      <div style={s.infoLabel}>{label}</div>
-      <div style={{ ...s.infoValue, ...(mono ? s.monoFont : {}) }}>
-        {value}
+          {/* ── Left sidebar ── */}
+          <div style={s.sidebar}>
+
+            {/* Photo */}
+            <div style={{ background: '#050a14', border: '1px solid #1a3a5c', overflow: 'hidden', marginBottom: '10px' }}>
+              <PhotoDisplay criminal_id={rec.criminal_id} large />
+            </div>
+
+            {/* ID + Status */}
+            <div style={s.idBox}>
+              <div style={{ fontSize: '9px', color: '#2a5a8a', letterSpacing: '1px', marginBottom: '4px' }}>SUBJECT ID</div>
+              <div style={{ fontSize: '12px', color: '#3a8adc', fontWeight: '700', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }}>
+                {rec.criminal_id}
+              </div>
+            </div>
+
+            <div style={{
+              background: rec.is_active ? '#1a0505' : '#051a0a',
+              border: `1px solid ${rec.is_active ? '#4a1a1a' : '#1a4a1a'}`,
+              color: rec.is_active ? '#e05050' : '#22c55e',
+              fontSize: '10px', fontWeight: '700', padding: '8px 12px',
+              textAlign: 'center', letterSpacing: '2px', marginBottom: '10px',
+            }}>
+              {rec.is_active ? '● WANTED' : '✓ INACTIVE'}
+            </div>
+
+            {/* Quick stats */}
+            <div style={s.quickStats}>
+              {[
+                { label: 'Crimes',    val: rec.crimes?.length        || 0, color: '#e05050' },
+                { label: 'Evidence',  val: rec.evidences?.length     || 0, color: '#3a8adc' },
+                { label: 'Court',     val: rec.court_decisions?.length || 0, color: '#7a5af8' },
+              ].map(q => (
+                <div key={q.label} style={s.quickStat}>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: q.color }}>{q.val}</div>
+                  <div style={{ fontSize: '9px', color: '#2a5a7a', letterSpacing: '1px' }}>{q.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Nav buttons */}
+            <div style={{ marginTop: '10px' }}>
+              {TABS.map(t => (
+                <button key={t.id} className="lecs-nav-btn" onClick={() => setTab(t.id)} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  width: '100%', background: tab === t.id ? '#0d1a2e' : 'transparent',
+                  border: `1px solid ${tab === t.id ? '#2a6fc4' : '#1a2a3a'}`,
+                  borderLeft: `3px solid ${tab === t.id ? '#3a8adc' : 'transparent'}`,
+                  color: tab === t.id ? '#e0ecff' : '#4a7aaa',
+                  padding: '9px 12px', cursor: 'pointer', fontSize: '10px',
+                  letterSpacing: '1.5px', fontFamily: "'Courier New', monospace",
+                  textTransform: 'uppercase', textAlign: 'left', marginBottom: '3px',
+                }}>
+                  <span>{t.label}</span>
+                  {t.count > 0 && (
+                    <span style={{
+                      background: tab === t.id ? '#2a6fc4' : '#1a2a3a',
+                      color: tab === t.id ? '#fff' : '#4a7aaa',
+                      fontSize: '9px', padding: '1px 6px', borderRadius: '2px',
+                    }}>{t.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Blockchain verified badge */}
+            <div style={s.chainBadge}>
+              <div style={{ fontSize: '9px', color: '#7a5af8', letterSpacing: '1px', marginBottom: '4px' }}>⬡ BLOCKCHAIN VERIFIED</div>
+              <div style={{ fontSize: '9px', color: '#1a2a4a', letterSpacing: '0.5px', lineHeight: '1.6' }}>
+                Record is immutable and stored on Ethereum. Hash: {rec.embedding_hash?.slice(0, 16)}...
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right content panel ── */}
+          <div style={s.contentPanel}>
+
+            {/* Panel header */}
+            <div style={s.panelHeaderRow}>
+              <div style={s.panelHeaderName}>{rec.name}</div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Badge label={rec.crimes?.[0]?.crime_status || 'Unknown'} type={statusType(rec.crimes?.[0]?.crime_status)} />
+                <span style={{ fontSize: '9px', color: '#2a5a7a' }}>
+                  Registered {rec.registered_at
+                    ? new Date(rec.registered_at * 1000).toLocaleDateString('en-GB')
+                    : '—'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ height: '1px', background: '#1a3a5c', marginBottom: '16px' }} />
+
+            {/* Tab content */}
+            {tab === 'personal'   && <PersonalPanel   rec={rec} />}
+            {tab === 'crimes'     && <CrimesPanel     crimes={rec.crimes} />}
+            {tab === 'evidence'   && <EvidencePanel   evidences={rec.evidences} />}
+            {tab === 'court'      && <CourtPanel      court_decisions={rec.court_decisions} />}
+            {tab === 'blockchain' && <BlockchainPanel rec={rec} />}
+          </div>
+        </div>
+      )}
+
+      {/* ── Footer ── */}
+      <div style={s.footer}>
+        <span style={s.footerTxt}>LECS v2.4.1 — RECORDS MODULE — RESTRICTED</span>
+        <span style={s.enc}>AES-256 ENCRYPTED</span>
       </div>
     </div>
   );
 }
 
-function FormField({ label, children }) {
-  return (
-    <div style={s.formField}>
-      <label style={s.formLabel}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function MetaItem({ label, value }) {
-  if (!value) return null;
-  return (
-    <div style={s.metaItem}>
-      <div style={s.metaLabel}>{label}</div>
-      <div style={s.metaValue}>{value}</div>
-    </div>
-  );
-}
-
-function StatBubble({ label, value, color }) {
-  return (
-    <div style={s.statBubble}>
-      <div style={{ ...s.statBubbleVal, color }}>{value}</div>
-      <div style={s.statBubbleLabel}>{label}</div>
-    </div>
-  );
-}
-
-function EmptyState({ msg }) {
-  return (
-    <div style={s.emptyState}>
-      <div style={{ fontSize: '32px' }}>📭</div>
-      <div style={{ color: '#4a7aaa', fontSize: '11px',
-                    letterSpacing: '2px', marginTop: '8px' }}>
-        {msg.toUpperCase()}
-      </div>
-    </div>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────
+/* ── Styles ── */
 const s = {
-  page:       { background: '#0a0e1a', minHeight: '100vh',
-                color: '#c8d8f0',
-                fontFamily: "'Courier New', monospace",
-                padding: '0 0 60px' },
-  header:     { background: 'linear-gradient(135deg,#0f1e3d,#1a2d5a,#0f1e3d)',
-                borderBottom: '2px solid #1e40af',
-                padding: '20px 32px',
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: '24px' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
-  shield:     { width: '36px', height: '36px', background: '#1a3a5c',
-                border: '2px solid #2a6fc4', borderRadius: '4px',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: '18px' },
-  headerTitle:{ fontSize: '14px', fontWeight: '700', color: '#60a5fa',
-                letterSpacing: '2px', textTransform: 'uppercase' },
-  headerSub:  { fontSize: '10px', color: '#4a7aaa', letterSpacing: '1px' },
+  pg: {
+    background: '#0a0e1a', color: '#c8d8f0',
+    fontFamily: "'Courier New', monospace", minHeight: '100vh',
+  },
 
-  searchBox:  { maxWidth: '900px', margin: '0 auto 24px',
-                background: '#0d1526',
-                border: '1px solid #1a3a5c', padding: '20px 24px' },
-  searchLabel:{ fontSize: '9px', color: '#2a6fc4',
-                letterSpacing: '3px', marginBottom: '12px',
-                borderLeft: '3px solid #2a6fc4', paddingLeft: '8px' },
-  searchRow:  { display: 'flex', gap: '10px', alignItems: 'center',
-                flexWrap: 'wrap' },
-  searchSelect:{ flex: 1, minWidth: '200px', padding: '10px 12px',
-                background: '#0a1020', border: '1px solid #1a3a5c',
-                color: '#c8d8f0', fontSize: '12px',
-                fontFamily: "'Courier New', monospace", outline: 'none' },
-  searchOr:   { fontSize: '10px', color: '#2a5a7a',
-                letterSpacing: '2px' },
-  searchInput:{ flex: 1, minWidth: '160px', padding: '10px 12px',
-                background: '#0a1020', border: '1px solid #1a3a5c',
-                color: '#c8d8f0', fontSize: '12px', outline: 'none',
-                fontFamily: "'Courier New', monospace" },
-  searchBtn:  { padding: '10px 20px', background: '#1d4ed8',
-                color: '#fff', border: 'none', cursor: 'pointer',
-                fontSize: '11px', fontWeight: '700',
-                fontFamily: "'Courier New', monospace",
-                letterSpacing: '1px' },
-  errorMsg:   { marginTop: '10px', color: '#ef4444',
-                fontSize: '11px', letterSpacing: '1px' },
+  pageHeader: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    borderBottom: '1px solid #1a3a5c', paddingBottom: '14px', marginBottom: '18px',
+  },
+  phLeft:  { display: 'flex', alignItems: 'center', gap: '10px' },
+  phIcon:  {
+    width: '34px', height: '34px', background: '#0a1020',
+    border: '2px solid #1a3a5c', borderRadius: '3px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
+  },
+  phTitle: { fontSize: '12px', fontWeight: '700', color: '#e0ecff', letterSpacing: '2px', textTransform: 'uppercase' },
+  phSub:   { fontSize: '9px', color: '#2a5a8a', letterSpacing: '2px', marginTop: '2px' },
+  statusPill: {
+    background: '#0a1020', border: '1px solid #1a3a5c',
+    color: '#3a8adc', fontSize: '9px', padding: '3px 10px', letterSpacing: '2px',
+  },
 
-  recordWrap: { maxWidth: '900px', margin: '0 auto' },
+  searchBar: {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    background: '#0d1526', border: '1px solid #1a3a5c',
+    padding: '12px 16px', marginBottom: '18px',
+  },
+  searchIcon: { fontSize: '14px', color: '#2a5a7a', flexShrink: 0 },
+  searchInp: {
+    flex: 1, background: '#070d1a', border: '1px solid #1a3a5c',
+    color: '#c8d8f0', fontFamily: "'Courier New', monospace",
+    fontSize: '12px', letterSpacing: '2px', padding: '9px 12px', outline: 'none',
+  },
+  searchBtn: {
+    background: '#0a1a30', border: '1px solid #2a5a9c',
+    color: '#60a5fa', fontFamily: "'Courier New', monospace",
+    fontSize: '10px', fontWeight: '700', letterSpacing: '2px',
+    textTransform: 'uppercase', padding: '10px 18px', cursor: 'pointer', flexShrink: 0,
+  },
 
-  criminalHeader:{ background: '#0d1526', border: '1px solid #2a6fc4',
-                   display: 'flex', gap: '20px',
-                   padding: '20px', marginBottom: '16px',
-                   alignItems: 'flex-start' },
-  criminalPhotoBox:{ flexShrink: 0 },
-  criminalPhoto:{ width: '120px', height: '150px',
-                  objectFit: 'cover', objectPosition: 'top',
-                  border: '2px solid #2a6fc4', display: 'block' },
-  photoFallback:{ width: '120px', height: '150px',
-                  background: '#0a1020',
-                  border: '2px solid #1a3a5c',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontSize: '48px', color: '#2a5a7a' },
-  criminalMeta: { flex: 1 },
-  criminalName: { fontSize: '20px', fontWeight: '700',
-                  color: '#e0ecff', letterSpacing: '2px',
-                  textTransform: 'uppercase', marginBottom: '6px' },
-  criminalIdBadge:{ display: 'inline-block',
-                    background: '#0a1a30',
-                    border: '1px solid #2a6fc4', color: '#3a8adc',
-                    fontSize: '11px', padding: '3px 12px',
-                    letterSpacing: '2px', marginBottom: '12px' },
-  metaGrid:   { display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' },
-  metaItem:   { },
-  metaLabel:  { fontSize: '9px', color: '#4a7aaa',
-                letterSpacing: '1px', textTransform: 'uppercase' },
-  metaValue:  { fontSize: '11px', color: '#c8d8f0', marginTop: '2px' },
-  criminalStats:{ display: 'flex', flexDirection: 'column',
-                  gap: '10px', flexShrink: 0 },
-  statBubble: { background: '#0a1020', border: '1px solid #1a3a5c',
-                padding: '12px 16px', textAlign: 'center',
-                minWidth: '80px' },
-  statBubbleVal:{ fontSize: '22px', fontWeight: '700' },
-  statBubbleLabel:{ fontSize: '9px', color: '#4a7aaa',
-                    letterSpacing: '1px', marginTop: '2px' },
+  errorStrip: {
+    background: '#0d0606', border: '1px solid #3a1515',
+    borderLeft: '3px solid #e05050', padding: '12px 14px',
+    marginBottom: '14px', fontSize: '11px', color: '#7a3030', letterSpacing: '1px',
+  },
 
-  tabs:       { display: 'flex', gap: '2px',
-                marginBottom: '2px', flexWrap: 'wrap' },
-  tab:        { padding: '10px 18px',
-                background: '#0d1526',
-                border: '1px solid #1a3a5c',
-                color: '#4a7aaa', cursor: 'pointer',
-                fontSize: '10px', letterSpacing: '1px',
-                fontFamily: "'Courier New', monospace",
-                textTransform: 'uppercase', transition: 'all 0.2s' },
-  tabActive:  { background: '#1a3a5c', color: '#60a5fa',
-                borderColor: '#2a6fc4' },
-  tabContent: { background: '#0d1526',
-                border: '1px solid #1a3a5c', padding: '24px' },
+  emptySearch: {
+    background: '#0d1526', border: '1px solid #1a3a5c',
+    padding: '60px 20px', textAlign: 'center', marginTop: '20px',
+  },
 
-  section:    { marginBottom: '24px' },
-  sectionTitle:{ fontSize: '10px', fontWeight: '700',
-                 color: '#4a8adc', letterSpacing: '3px',
-                 textTransform: 'uppercase',
-                 borderLeft: '3px solid #2a6fc4',
-                 paddingLeft: '10px', marginBottom: '16px' },
-  sectionDivider:{ fontSize: '9px', color: '#2a5a7a',
-                   letterSpacing: '3px', textTransform: 'uppercase',
-                   textAlign: 'center', padding: '12px 0',
-                   borderTop: '1px solid #0f1e35',
-                   marginTop: '16px' },
+  recordGrid: {
+    display: 'grid', gridTemplateColumns: '220px 1fr',
+    gap: '16px', alignItems: 'start',
+  },
 
-  grid2:      { display: 'grid',
-                gridTemplateColumns: '1fr 1fr', gap: '0 24px' },
-  infoRow:    { padding: '7px 0',
-                borderBottom: '1px solid #0f1e35' },
-  infoRowWide:{ gridColumn: '1 / -1' },
-  infoLabel:  { fontSize: '9px', color: '#4a7aaa',
-                letterSpacing: '1px', textTransform: 'uppercase' },
-  infoValue:  { fontSize: '11px', color: '#c8d8f0', marginTop: '2px' },
-  monoFont:   { fontFamily: "'Courier New', monospace",
-                fontSize: '10px', color: '#2a8adc',
-                wordBreak: 'break-all' },
+  sidebar: { position: 'sticky', top: '20px' },
 
-  crimeCard:  { background: '#0a1020',
-                border: '1px solid #2a1a1a',
-                padding: '16px', marginBottom: '12px' },
-  crimeHeader:{ display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: '12px' },
-  crimeType:  { fontSize: '13px', fontWeight: '700',
-                color: '#e05050', letterSpacing: '1px',
-                textTransform: 'uppercase' },
-  statusBadge:{ fontSize: '9px', padding: '3px 10px',
-                letterSpacing: '1px', fontWeight: '700' },
+  idBox: {
+    background: '#0d1526', border: '1px solid #1a3a5c',
+    padding: '10px 12px', marginBottom: '8px',
+  },
 
-  evidenceCard:{ background: '#0a100a',
-                 border: '1px solid #1a2a1a',
-                 padding: '16px', marginBottom: '12px' },
-  evidenceHeader:{ display: 'flex', justifyContent: 'space-between',
-                   alignItems: 'center', marginBottom: '12px' },
-  evidenceType:{ fontSize: '12px', fontWeight: '700',
-                 color: '#f59e0b', letterSpacing: '1px' },
-  evidenceId: { fontSize: '10px', color: '#2a6fc4',
-                fontFamily: "'Courier New', monospace" },
+  quickStats: {
+    display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+    gap: '6px', marginBottom: '10px',
+  },
+  quickStat: {
+    background: '#0d1526', border: '1px solid #1a3a5c',
+    padding: '10px 6px', textAlign: 'center',
+  },
 
-  courtCard:  { background: '#0a0a18',
-                border: '1px solid #1a1a3a',
-                padding: '16px', marginBottom: '12px' },
-  courtHeader:{ display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: '12px' },
-  courtName:  { fontSize: '13px', fontWeight: '700',
-                color: '#7a5af8', letterSpacing: '1px' },
-  verdictBadge:{ fontSize: '10px', padding: '3px 12px',
-                 fontWeight: '700', letterSpacing: '1px' },
+  chainBadge: {
+    background: '#0a0d1a', border: '1px solid #1a1a3a',
+    borderLeft: '2px solid #7a5af8', padding: '10px 12px', marginTop: '10px',
+  },
 
-  blockchainRef:{ fontSize: '9px', color: '#2a6fc4',
-                  fontFamily: "'Courier New', monospace",
-                  marginTop: '8px', wordBreak: 'break-all',
-                  borderTop: '1px solid #0f1e35', paddingTop: '8px' },
+  contentPanel: {
+    background: '#0d1526', border: '1px solid #1a3a5c', padding: '20px',
+    minHeight: '500px',
+  },
+  panelHeaderRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+    marginBottom: '12px',
+  },
+  panelHeaderName: {
+    fontSize: '20px', fontWeight: '700', color: '#e0ecff',
+    letterSpacing: '1px', textTransform: 'uppercase',
+  },
 
-  blockchainPanel:{ textAlign: 'center', padding: '24px 0',
-                    marginBottom: '16px' },
-  blockchainIcon: { fontSize: '40px', marginBottom: '8px' },
-  blockchainTitle:{ fontSize: '13px', fontWeight: '700',
-                    color: '#22c55e', letterSpacing: '3px' },
-  blockchainSub:  { fontSize: '10px', color: '#4a7aaa',
-                    marginTop: '4px', letterSpacing: '1px' },
-
-  txRecord:   { background: '#0a1020',
-                border: '1px solid #1a3a5c',
-                padding: '12px', marginBottom: '8px' },
-  txType:     { fontSize: '11px', color: '#60a5fa',
-                marginBottom: '4px', fontWeight: '700' },
-  txDetail:   { fontSize: '10px', color: '#4a7aaa',
-                fontFamily: "'Courier New', monospace" },
-  txTime:     { fontSize: '9px', color: '#2a4a6a', marginTop: '4px' },
-
-  formGrid:   { display: 'grid',
-                gridTemplateColumns: '1fr 1fr', gap: '0 24px' },
-  formField:  { marginBottom: '14px' },
-  formLabel:  { display: 'block', fontSize: '9px', color: '#4a7aaa',
-                letterSpacing: '1px', textTransform: 'uppercase',
-                marginBottom: '5px' },
-  input:      { width: '100%', padding: '9px 11px',
-                background: '#0a1020',
-                border: '1px solid #1a3a5c', color: '#c8d8f0',
-                fontSize: '12px', outline: 'none',
-                fontFamily: "'Courier New', monospace",
-                boxSizing: 'border-box' },
-  select:     { width: '100%', padding: '9px 11px',
-                background: '#0a1020',
-                border: '1px solid #1a3a5c', color: '#c8d8f0',
-                fontSize: '12px', outline: 'none', cursor: 'pointer',
-                fontFamily: "'Courier New', monospace",
-                boxSizing: 'border-box' },
-  fileLabel:  { display: 'inline-block', padding: '8px 14px',
-                background: '#0a1020',
-                border: '1px solid #2a6fc4', color: '#3a8adc',
-                fontSize: '11px', cursor: 'pointer',
-                letterSpacing: '1px', fontFamily: 'inherit' },
-  fileName:   { fontSize: '10px', color: '#22c55e',
-                marginLeft: '10px' },
-  submitBtn:  { padding: '12px 24px', background: '#dc2626',
-                color: '#fff', border: 'none', cursor: 'pointer',
-                fontSize: '11px', fontWeight: '700',
-                fontFamily: "'Courier New', monospace",
-                letterSpacing: '2px', marginTop: '8px' },
-  successBox: { marginTop: '12px', padding: '12px 16px',
-                background: '#021207',
-                border: '1px solid #166534', color: '#22c55e',
-                fontSize: '11px' },
-  txLine:     { fontSize: '10px', color: '#4a7aaa',
-                marginTop: '6px', wordBreak: 'break-all',
-                fontFamily: "'Courier New', monospace" },
-
-  emptyState: { textAlign: 'center', padding: '32px 0' },
+  footer: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #0d1a2e',
+  },
+  footerTxt: { fontSize: '9px', color: '#1a3a5a', letterSpacing: '1.5px' },
+  enc: {
+    background: '#06090f', border: '1px solid #0d1f35',
+    color: '#1e4a6a', fontSize: '9px', padding: '3px 10px', letterSpacing: '2px',
+  },
 };
