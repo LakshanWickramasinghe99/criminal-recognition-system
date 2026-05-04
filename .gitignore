@@ -1,0 +1,39 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# AI model / dataset / training outputs
+*.pt
+runs/
+dataset/
+label_check/
+label_check_all/
+
+# Database
+*.db
+
+# Output media/images
+*.mp4
+*.jpg
+*.jpeg
+*.png
+
+# Node / environment
+node_modules/
+.env
+
+# Hardhat files
+cache/
+artifacts/
+
+# TypeChain files
+typechain/
+typechain-types/
+
+# solidity-coverage files
+coverage/
+coverage.json
+
+# Hardhat Ignition local deployments
+ignition/deployments/chain-31337/

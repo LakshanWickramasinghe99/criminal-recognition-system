@@ -1,0 +1,715 @@
+{
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "decisionId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "verdict",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "CourtDecisionLogged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "videoFile",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "confidence",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "CriminalIdentified",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "officer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "CriminalRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "evidenceId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "fileHash",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "EvidenceLogged",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "officer",
+          "type": "address"
+        }
+      ],
+      "name": "addOfficer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "admin",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "authorizedOfficers",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getAllCriminalIds",
+      "outputs": [
+        {
+          "internalType": "string[]",
+          "name": "",
+          "type": "string[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCourtDecisions",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "decisionId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "courtName",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "verdict",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "sentence",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "hearingDate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "loggedAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "loggedBy",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.CourtDecisionLog[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        }
+      ],
+      "name": "getCourtDecisionsForCriminal",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "decisionId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "courtName",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "verdict",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "sentence",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "hearingDate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "loggedAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "loggedBy",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.CourtDecisionLog[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        }
+      ],
+      "name": "getCriminal",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "age",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "crimeHistory",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "embeddingHash",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "registeredAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "registeredBy",
+              "type": "address"
+            },
+            {
+              "internalType": "bool",
+              "name": "isActive",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.Criminal",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        }
+      ],
+      "name": "getEvidenceForCriminal",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceType",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "fileHash",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "loggedAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "loggedBy",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.EvidenceLog[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getEvidenceLogs",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceType",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "fileHash",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "loggedAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "loggedBy",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.EvidenceLog[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getIdentificationLogs",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "criminalId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "videoFile",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "confidence",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "frameCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "detectedAt",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct CriminalRegistry.IdentificationLog[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalCriminals",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalIdentifications",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        }
+      ],
+      "name": "isCriminalRegistered",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "decisionId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "courtName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "verdict",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "sentence",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "hearingDate",
+          "type": "uint256"
+        }
+      ],
+      "name": "logCourtDecision",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "evidenceId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "evidenceType",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "fileHash",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "description",
+          "type": "string"
+        }
+      ],
+      "name": "logEvidence",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "videoFile",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "confidence",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "frameCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "logIdentification",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "criminalId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "age",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "crimeHistory",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "embeddingHash",
+          "type": "string"
+        }
+      ],
+      "name": "registerCriminal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "officer",
+          "type": "address"
+        }
+      ],
+      "name": "removeOfficer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}
